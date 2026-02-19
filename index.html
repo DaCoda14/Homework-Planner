@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="icon-192.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Devon's Homework Planner</title>
@@ -56,17 +53,8 @@
             gap: 15px;
             margin-top: 20px;
             justify-content: center;
+            transition: all 0.2s ease;
         }
-
-        .task-card {
-    transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .task-card.dragging {
-    transform: scale(1.05);
-    box-shadow: 4px 8px 15px rgba(0,0,0,0.35);
-    }
-
         .task-card {
             padding: 15px;
             width: 150px;
@@ -76,6 +64,11 @@
             flex-direction: column;
             position: relative;
             cursor: grab;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .task-card.dragging {
+            transform: scale(1.05);
+            box-shadow: 4px 8px 15px rgba(0,0,0,0.35);
         }
         .task-card.dark {
             filter: brightness(0.9);
@@ -84,6 +77,9 @@
             font-size: 14px;
             margin-bottom: 5px;
             cursor: text;
+        }
+        .task-card small {
+            font-size: 12px;
         }
         .task-card button.delete-btn {
             position: absolute;
@@ -129,12 +125,14 @@
     <option value="Math" data-color="#fffa87">Math</option>
     <option value="Science" data-color="#a0e7a0">Science</option>
     <option value="English" data-color="#f9c1c1">English</option>
+    <option value="Civics" data-color="#ffd1a4">Civics</option>
     <option value="Other" data-color="#d3d3d3">Other</option>
 </select>
 <select id="priority">
     <option value="normal">Normal</option>
     <option value="high">High ⚠️</option>
 </select>
+<input type="date" id="dueDate">
 <button onclick="addTask()">Add Task</button>
 
 <div id="taskContainer"></div>
@@ -144,9 +142,11 @@
     <div><div class="color-box" style="background:#fffa87;"></div> Math</div>
     <div><div class="color-box" style="background:#a0e7a0;"></div> Science</div>
     <div><div class="color-box" style="background:#f9c1c1;"></div> English</div>
+    <div><div class="color-box" style="background:#ffd1a4;"></div> Civics</div>
     <div><div class="color-box" style="background:#d3d3d3;"></div> Other</div>
 </div>
 
 <script src="script.js"></script>
 </body>
 </html>
+

@@ -8,7 +8,7 @@ if (!username) {
 }
 document.getElementById("usernameDisplay").innerText = "Hi, " + username;
 
-// Save tasks to localStorage
+// Save tasks
 function saveTasks() {
     localStorage.setItem("tasks", JSON.stringify(tasks));
 }
@@ -20,17 +20,24 @@ function addTask() {
     const color = subjectSelect.options[subjectSelect.selectedIndex].dataset.color;
     const prioritySelect = document.getElementById("priority");
     const priority = prioritySelect.value;
+    const dueDateInput = document.getElementById("dueDate").value;
 
     if (!text) return;
 
-    const task = { text, color, priority };
+    const task = { 
+        text, 
+        color, 
+        priority, 
+        dueDate: dueDateInput ? new Date(dueDateInput).toDateString() : null 
+    };
     tasks.push(task);
     document.getElementById("taskInput").value = "";
+    document.getElementById("dueDate").value = "";
     saveTasks();
     showTasks();
 }
 
-// Delete a task
+// Delete task
 function deleteTask(index) {
     tasks.splice(index, 1);
     saveTasks();
@@ -51,6 +58,14 @@ function addDoubleTapListener(element, callback) {
     element.addEventListener('dblclick', callback);
 }
 
+// Convert date to day of the week
+function getDayOfWeek(dateStr) {
+    if (!dateStr) return "No due";
+    const date = new Date(dateStr);
+    const options = { weekday: 'long' };
+    return date.toLocaleDateString(undefined, options);
+}
+
 // Show all tasks
 function showTasks() {
     const container = document.getElementById("taskContainer");
@@ -63,9 +78,12 @@ function showTasks() {
         card.draggable = true;
 
         const priorityIcon = task.priority === "high" ? "⚠️ " : "";
+        const dueText = getDayOfWeek(task.dueDate);
+
         card.innerHTML = `
             <button class="delete-btn" onclick="deleteTask(${index})">X</button>
             <strong>${priorityIcon}${task.text}</strong>
+            <small>Due: ${dueText}</small>
         `;
         container.appendChild(card);
 
@@ -84,7 +102,7 @@ function showTasks() {
         card.addEventListener("dragstart", e => {
             e.dataTransfer.setData("text/plain", index);
             card.style.opacity = "0.5";
-            card.classList.add("dragging"); // scale-up effect
+            card.classList.add("dragging");
         });
         card.addEventListener("dragend", e => {
             card.style.opacity = "1";
@@ -104,7 +122,7 @@ function showTasks() {
     });
 }
 
-// Toggle dark mode
+// Dark mode
 function toggleDarkMode() {
     document.body.classList.toggle("dark");
     localStorage.setItem("darkMode", document.body.classList.contains("dark"));
@@ -113,5 +131,5 @@ if (localStorage.getItem("darkMode") === "true") {
     document.body.classList.add("dark");
 }
 
-// Initialize tasks display
+// Initialize
 showTasks();
