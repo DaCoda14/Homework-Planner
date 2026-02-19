@@ -1,135 +1,149 @@
-let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-let username = localStorage.getItem("username");
+// --- Firebase config ---
+const firebaseConfig = {
+  apiKey: "AIzaSyAjpXwX1gjSbjqqsEyOyzrEZs0PitdzJyw",
+  authDomain: "homework-planner-67833.firebaseapp.com",
+  projectId: "homework-planner-67833",
+  storageBucket: "homework-planner-67833.firebasestorage.app",
+  messagingSenderId: "232685955399",
+  appId: "1:232685955399:web:6fb675b79b7cd87ec04462",
+  measurementId: "G-LSNP65LMFN"
+};
 
-// Ask for username if not set
-if (!username) {
-    username = prompt("Enter your name:");
-    localStorage.setItem("username", username);
+// Initialize Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let tasks = [];
+
+// --- Login/Register ---
+function registerUser(email, password){
+  auth.createUserWithEmailAndPassword(email,password)
+    .then(userCredential => {
+      alert("Registered!");
+      showPlanner(userCredential.user.email);
+      saveTasks();
+    })
+    .catch(err=>alert(err.message));
 }
-document.getElementById("usernameDisplay").innerText = "Hi, " + username;
 
-// Save tasks
-function saveTasks() {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
+function loginUser(email, password){
+  auth.signInWithEmailAndPassword(email,password)
+    .then(userCredential=>{
+      alert("Logged in!");
+      showPlanner(userCredential.user.email);
+      loadTasks();
+    })
+    .catch(err=>alert(err.message));
 }
 
-// Add a new task
-function addTask() {
-    const text = document.getElementById("taskInput").value.trim();
-    const subjectSelect = document.getElementById("subject");
-    const color = subjectSelect.options[subjectSelect.selectedIndex].dataset.color;
-    const prioritySelect = document.getElementById("priority");
-    const priority = prioritySelect.value;
-    const dueDateInput = document.getElementById("dueDate").value;
+// Show planner page
+function showPlanner(email){
+  document.getElementById("loginPage").style.display="none";
+  document.getElementById("plannerPage").style.display="block";
+  document.getElementById("usernameDisplay").innerText = "Hi, "+email;
+}
 
-    if (!text) return;
-
-    const task = { 
-        text, 
-        color, 
-        priority, 
-        dueDate: dueDateInput ? new Date(dueDateInput).toDateString() : null 
-    };
-    tasks.push(task);
-    document.getElementById("taskInput").value = "";
-    document.getElementById("dueDate").value = "";
-    saveTasks();
+// --- Load tasks from Firestore ---
+function loadTasks(){
+  const uid = auth.currentUser.uid;
+  db.collection("users").doc(uid).get().then(doc=>{
+    if(doc.exists){
+      tasks = doc.data().tasks || [];
+    } else {
+      tasks=[];
+      db.collection("users").doc(uid).set({tasks:[]});
+    }
     showTasks();
+  });
 }
 
-// Delete task
-function deleteTask(index) {
-    tasks.splice(index, 1);
-    saveTasks();
-    showTasks();
+// --- Save tasks to Firestore ---
+function saveTasks(){
+  const uid = auth.currentUser.uid;
+  db.collection("users").doc(uid).set({tasks});
 }
 
-// Double-tap detection (mobile) and double-click (desktop)
-function addDoubleTapListener(element, callback) {
-    let lastTap = 0;
-    element.addEventListener('touchend', () => {
-        const currentTime = new Date().getTime();
-        const tapLength = currentTime - lastTap;
-        if (tapLength < 300 && tapLength > 0) {
-            callback();
-        }
-        lastTap = currentTime;
+// --- Add task ---
+function addTask(){
+  const text = document.getElementById("taskInput").value.trim();
+  if(!text) return;
+  const subject = document.getElementById("subject");
+  const color = subject.options[subject.selectedIndex].dataset.color;
+  const priority = document.getElementById("priority").value;
+  const due = document.getElementById("dueDate").value;
+  const task = {text,color,priority,dueDate:due?new Date(due).toDateString():null};
+  tasks.push(task);
+  document.getElementById("taskInput").value="";
+  document.getElementById("dueDate").value="";
+  saveTasks();
+  showTasks();
+}
+
+// --- Delete task ---
+function deleteTask(i){
+  tasks.splice(i,1);
+  saveTasks();
+  showTasks();
+}
+
+// --- Double tap edit ---
+function addDoubleTapListener(el,callback){
+  let lastTap=0;
+  el.addEventListener("touchend",()=>{
+    const now=new Date().getTime();
+    if(now-lastTap<300 && now-lastTap>0) callback();
+    lastTap=now;
+  });
+  el.addEventListener("dblclick",callback);
+}
+
+// --- Day of week ---
+function getDayOfWeek(dateStr){
+  if(!dateStr) return "No due";
+  return new Date(dateStr).toLocaleDateString(undefined,{weekday:"long"});
+}
+
+// --- Show tasks ---
+function showTasks(){
+  const container=document.getElementById("taskContainer");
+  container.innerHTML="";
+  tasks.forEach((task,index)=>{
+    const card=document.createElement("div");
+    card.className="task-card";
+    card.style.background=task.color;
+    card.draggable=true;
+    const icon=task.priority==="high"?"⚠️ ":"";
+    const due=getDayOfWeek(task.dueDate);
+    card.innerHTML=`<button class="delete-btn" onclick="deleteTask(${index})">X</button>
+                    <strong>${icon}${task.text}</strong>
+                    <small>Due: ${due}</small>`;
+    container.appendChild(card);
+
+    const textEl=card.querySelector("strong");
+    addDoubleTapListener(textEl,()=>{
+      const newText=prompt("Edit task:",task.text);
+      if(newText && newText.trim()!==""){task.text=newText.trim();saveTasks();showTasks();}
     });
-    element.addEventListener('dblclick', callback);
-}
 
-// Convert date to day of the week
-function getDayOfWeek(dateStr) {
-    if (!dateStr) return "No due";
-    const date = new Date(dateStr);
-    const options = { weekday: 'long' };
-    return date.toLocaleDateString(undefined, options);
-}
-
-// Show all tasks
-function showTasks() {
-    const container = document.getElementById("taskContainer");
-    container.innerHTML = "";
-
-    tasks.forEach((task, index) => {
-        const card = document.createElement("div");
-        card.className = "task-card";
-        card.style.background = task.color;
-        card.draggable = true;
-
-        const priorityIcon = task.priority === "high" ? "⚠️ " : "";
-        const dueText = getDayOfWeek(task.dueDate);
-
-        card.innerHTML = `
-            <button class="delete-btn" onclick="deleteTask(${index})">X</button>
-            <strong>${priorityIcon}${task.text}</strong>
-            <small>Due: ${dueText}</small>
-        `;
-        container.appendChild(card);
-
-        // Double-tap / double-click to edit
-        const textEl = card.querySelector("strong");
-        addDoubleTapListener(textEl, () => {
-            const newText = prompt("Edit task:", task.text);
-            if (newText !== null && newText.trim() !== "") {
-                task.text = newText.trim();
-                saveTasks();
-                showTasks();
-            }
-        });
-
-        // Drag & drop
-        card.addEventListener("dragstart", e => {
-            e.dataTransfer.setData("text/plain", index);
-            card.style.opacity = "0.5";
-            card.classList.add("dragging");
-        });
-        card.addEventListener("dragend", e => {
-            card.style.opacity = "1";
-            card.classList.remove("dragging");
-        });
-        card.addEventListener("dragover", e => e.preventDefault());
-        card.addEventListener("drop", e => {
-            e.preventDefault();
-            const fromIndex = parseInt(e.dataTransfer.getData("text/plain"));
-            const toIndex = index;
-            if (fromIndex === toIndex) return;
-            const moved = tasks.splice(fromIndex, 1)[0];
-            tasks.splice(toIndex, 0, moved);
-            saveTasks();
-            showTasks();
-        });
+    // Drag & drop
+    card.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",index);card.style.opacity="0.5";card.classList.add("dragging");});
+    card.addEventListener("dragend",e=>{card.style.opacity="1";card.classList.remove("dragging");});
+    card.addEventListener("dragover",e=>e.preventDefault());
+    card.addEventListener("drop",e=>{
+      e.preventDefault();
+      const from=parseInt(e.dataTransfer.getData("text/plain"));
+      if(from===index) return;
+      const moved=tasks.splice(from,1)[0];
+      tasks.splice(index,0,moved);
+      saveTasks();
+      showTasks();
     });
+  });
 }
 
-// Dark mode
-function toggleDarkMode() {
-    document.body.classList.toggle("dark");
-    localStorage.setItem("darkMode", document.body.classList.contains("dark"));
-}
-if (localStorage.getItem("darkMode") === "true") {
-    document.body.classList.add("dark");
-}
+// --- Dark mode ---
+function toggleDarkMode(){document.body.classList.toggle("dark");}
+if(localStorage.getItem("darkMode")==="true") document.body.classList.add("dark");
 
-// Initialize
-showTasks();
+
