@@ -1,83 +1,70 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Devon's Homework Planner</title>
-<style>
-body { font-family: Arial, sans-serif; margin:0; padding:20px; transition:0.3s; background:linear-gradient(to right,#4e73df,#1cc88a); }
-body.dark{background:#1e1e1e;color:white;}
-h1,h2{text-align:center;margin:10px 0;}
-input, button, select{padding:8px;border-radius:8px;border:1px solid #ccc;margin:5px 0;}
-button{background-color:#4e73df;color:white;cursor:pointer;border:none;}
-button:hover{opacity:0.85;}
-#loginPage, #plannerPage{display:none;}
-#taskContainer{display:flex;flex-wrap:wrap;gap:15px;margin-top:20px;justify-content:center;transition:all 0.2s ease;}
-.task-card{padding:15px;width:150px;border-radius:12px;box-shadow:2px 4px 10px rgba(0,0,0,0.2);display:flex;flex-direction:column;position:relative;cursor:grab;transition:transform 0.2s,box-shadow 0.2s;}
-.task-card.dragging{transform:scale(1.05);box-shadow:4px 8px 15px rgba(0,0,0,0.35);}
-.task-card strong{font-size:14px;margin-bottom:5px;cursor:text;}
-.task-card small{font-size:12px;}
-.task-card button.delete-btn{position:absolute;top:5px;right:5px;background:red;font-size:12px;padding:2px 6px;border:none;border-radius:5px;cursor:pointer;color:white;}
-.legend{display:flex;justify-content:center;gap:15px;margin-top:15px;}
-.legend div{display:flex;align-items:center;gap:5px;}
-.color-box{width:20px;height:20px;border-radius:4px;}
-.top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-</style>
+
+<title>Homework Planner</title>
+
+<link rel="stylesheet" href="style.css">
+
+<!-- Firebase CDN -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
 </head>
+
 <body>
 
-<!-- LOGIN PAGE -->
-<div id="loginPage">
-    <h1>Homework Planner Login</h1>
-    <input id="email" type="email" placeholder="Email"><br>
-    <input id="password" type="password" placeholder="Password"><br>
-    <button onclick="loginUser(document.getElementById('email').value, document.getElementById('password').value)">Login</button>
-    <button onclick="registerUser(document.getElementById('email').value, document.getElementById('password').value)">Register</button>
-</div>
-
-<!-- PLANNER PAGE -->
-<div id="plannerPage">
-    <div class="top-bar">
-        <span id="usernameDisplay"></span>
-        <button onclick="toggleDarkMode()">🌙</button>
-    </div>
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="center">
     <h1>Homework Planner</h1>
 
-    <input id="taskInput" placeholder="Enter homework">
-    <select id="subject">
-        <option value="Math" data-color="#fffa87">Math</option>
-        <option value="Science" data-color="#a0e7a0">Science</option>
-        <option value="English" data-color="#f9c1c1">English</option>
-        <option value="Civics" data-color="#ffd1a4">Civics</option>
-        <option value="Other" data-color="#d3d3d3">Other</option>
-    </select>
-    <select id="priority">
-        <option value="normal">Normal</option>
-        <option value="high">High ⚠️</option>
-    </select>
-    <input type="date" id="dueDate">
-    <button onclick="addTask()">Add Task</button>
+    <input id="email" type="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
 
-    <div id="taskContainer"></div>
+    <button onclick="register()">Create Account</button>
+    <button onclick="login()">Login</button>
 
-    <h2>Subject Colors</h2>
-    <div class="legend">
-        <div><div class="color-box" style="background:#fffa87;"></div> Math</div>
-        <div><div class="color-box" style="background:#a0e7a0;"></div> Science</div>
-        <div><div class="color-box" style="background:#f9c1c1;"></div> English</div>
-        <div><div class="color-box" style="background:#ffd1a4;"></div> Civics</div>
-        <div><div class="color-box" style="background:#d3d3d3;"></div> Other</div>
-    </div>
+    <p id="error"></p>
 </div>
 
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/10.6.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.6.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.6.1/firebase-firestore.js"></script>
+<!-- MAIN APP -->
+<div id="app" style="display:none;">
+
+<header>
+    <h2>My Assignments</h2>
+    <button onclick="logout()">Logout</button>
+</header>
+
+<div class="add-area">
+    <input id="taskInput" placeholder="Assignment name">
+
+    <select id="subject">
+        <option>Math</option>
+        <option>Science</option>
+        <option>English</option>
+        <option>History</option>
+        <option>Civics</option>
+    </select>
+
+    <select id="dueDay">
+        <option>Monday</option>
+        <option>Tuesday</option>
+        <option>Wednesday</option>
+        <option>Thursday</option>
+        <option>Friday</option>
+    </select>
+
+    <button onclick="addTask()">Add</button>
+</div>
+
+<div id="board"></div>
+
+</div>
 
 <script src="script.js"></script>
+
 </body>
 </html>
-
-
-

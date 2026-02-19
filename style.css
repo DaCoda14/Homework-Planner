@@ -1,0 +1,74 @@
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
+}
+
+.center{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    height:100vh;
+    gap:10px;
+}
+
+input, select{
+    padding:10px;
+    border-radius:8px;
+    border:none;
+    width:220px;
+}
+
+button{
+    padding:10px;
+    border:none;
+    border-radius:8px;
+    background:#2563eb;
+    color:white;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#1d4ed8;
+}
+
+header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:15px;
+    background:#020617;
+}
+
+.add-area{
+    padding:15px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+#board{
+    display:flex;
+    flex-wrap:wrap;
+    gap:15px;
+    padding:20px;
+}
+
+.note{
+    width:200px;
+    min-height:120px;
+    padding:12px;
+    border-radius:12px;
+    font-weight:bold;
+    color:black;
+}
+
+/* Subject colors */
+.math{ background:#fde68a; }
+.science{ background:#a7f3d0; }
+.english{ background:#bfdbfe; }
+.history{ background:#fecaca; }
+.civics{ background:#ddd6fe; }
+

@@ -1,149 +1,95 @@
-// --- Firebase config ---
+// FIREBASE CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyAjpXwX1gjSbjqqsEyOyzrEZs0PitdzJyw",
   authDomain: "homework-planner-67833.firebaseapp.com",
   projectId: "homework-planner-67833",
-  storageBucket: "homework-planner-67833.firebasestorage.app",
-  messagingSenderId: "232685955399",
-  appId: "1:232685955399:web:6fb675b79b7cd87ec04462",
-  measurementId: "G-LSNP65LMFN"
 };
 
-// Initialize Firebase
-const app = firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
+
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-let tasks = [];
 
-// --- Login/Register ---
-function registerUser(email, password){
-  auth.createUserWithEmailAndPassword(email,password)
-    .then(userCredential => {
-      alert("Registered!");
-      showPlanner(userCredential.user.email);
-      saveTasks();
-    })
-    .catch(err=>alert(err.message));
+// REGISTER
+function register(){
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    auth.createUserWithEmailAndPassword(email,password)
+    .catch(error => {
+        document.getElementById("error").innerText = error.message;
+    });
 }
 
-function loginUser(email, password){
-  auth.signInWithEmailAndPassword(email,password)
-    .then(userCredential=>{
-      alert("Logged in!");
-      showPlanner(userCredential.user.email);
-      loadTasks();
-    })
-    .catch(err=>alert(err.message));
+// LOGIN
+function login(){
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    auth.signInWithEmailAndPassword(email,password)
+    .catch(error => {
+        document.getElementById("error").innerText = error.message;
+    });
 }
 
-// Show planner page
-function showPlanner(email){
-  document.getElementById("loginPage").style.display="none";
-  document.getElementById("plannerPage").style.display="block";
-  document.getElementById("usernameDisplay").innerText = "Hi, "+email;
+// LOGOUT
+function logout(){
+    auth.signOut();
 }
 
-// --- Load tasks from Firestore ---
-function loadTasks(){
-  const uid = auth.currentUser.uid;
-  db.collection("users").doc(uid).get().then(doc=>{
-    if(doc.exists){
-      tasks = doc.data().tasks || [];
-    } else {
-      tasks=[];
-      db.collection("users").doc(uid).set({tasks:[]});
+// AUTH STATE LISTENER
+auth.onAuthStateChanged(user=>{
+    if(user){
+        document.getElementById("login-screen").style.display="none";
+        document.getElementById("app").style.display="block";
+        loadTasks();
+    }else{
+        document.getElementById("login-screen").style.display="flex";
+        document.getElementById("app").style.display="none";
     }
-    showTasks();
-  });
-}
+});
 
-// --- Save tasks to Firestore ---
-function saveTasks(){
-  const uid = auth.currentUser.uid;
-  db.collection("users").doc(uid).set({tasks});
-}
-
-// --- Add task ---
+// ADD TASK
 function addTask(){
-  const text = document.getElementById("taskInput").value.trim();
-  if(!text) return;
-  const subject = document.getElementById("subject");
-  const color = subject.options[subject.selectedIndex].dataset.color;
-  const priority = document.getElementById("priority").value;
-  const due = document.getElementById("dueDate").value;
-  const task = {text,color,priority,dueDate:due?new Date(due).toDateString():null};
-  tasks.push(task);
-  document.getElementById("taskInput").value="";
-  document.getElementById("dueDate").value="";
-  saveTasks();
-  showTasks();
-}
+    const text = document.getElementById("taskInput").value;
+    const subject = document.getElementById("subject").value;
+    const due = document.getElementById("dueDay").value;
 
-// --- Delete task ---
-function deleteTask(i){
-  tasks.splice(i,1);
-  saveTasks();
-  showTasks();
-}
+    if(!text) return;
 
-// --- Double tap edit ---
-function addDoubleTapListener(el,callback){
-  let lastTap=0;
-  el.addEventListener("touchend",()=>{
-    const now=new Date().getTime();
-    if(now-lastTap<300 && now-lastTap>0) callback();
-    lastTap=now;
-  });
-  el.addEventListener("dblclick",callback);
-}
-
-// --- Day of week ---
-function getDayOfWeek(dateStr){
-  if(!dateStr) return "No due";
-  return new Date(dateStr).toLocaleDateString(undefined,{weekday:"long"});
-}
-
-// --- Show tasks ---
-function showTasks(){
-  const container=document.getElementById("taskContainer");
-  container.innerHTML="";
-  tasks.forEach((task,index)=>{
-    const card=document.createElement("div");
-    card.className="task-card";
-    card.style.background=task.color;
-    card.draggable=true;
-    const icon=task.priority==="high"?"⚠️ ":"";
-    const due=getDayOfWeek(task.dueDate);
-    card.innerHTML=`<button class="delete-btn" onclick="deleteTask(${index})">X</button>
-                    <strong>${icon}${task.text}</strong>
-                    <small>Due: ${due}</small>`;
-    container.appendChild(card);
-
-    const textEl=card.querySelector("strong");
-    addDoubleTapListener(textEl,()=>{
-      const newText=prompt("Edit task:",task.text);
-      if(newText && newText.trim()!==""){task.text=newText.trim();saveTasks();showTasks();}
+    db.collection("tasks").add({
+        uid: auth.currentUser.uid,
+        text: text,
+        subject: subject,
+        due: due
     });
 
-    // Drag & drop
-    card.addEventListener("dragstart",e=>{e.dataTransfer.setData("text/plain",index);card.style.opacity="0.5";card.classList.add("dragging");});
-    card.addEventListener("dragend",e=>{card.style.opacity="1";card.classList.remove("dragging");});
-    card.addEventListener("dragover",e=>e.preventDefault());
-    card.addEventListener("drop",e=>{
-      e.preventDefault();
-      const from=parseInt(e.dataTransfer.getData("text/plain"));
-      if(from===index) return;
-      const moved=tasks.splice(from,1)[0];
-      tasks.splice(index,0,moved);
-      saveTasks();
-      showTasks();
-    });
-  });
+    document.getElementById("taskInput").value="";
 }
 
-// --- Dark mode ---
-function toggleDarkMode(){document.body.classList.toggle("dark");}
-if(localStorage.getItem("darkMode")==="true") document.body.classList.add("dark");
+// LOAD TASKS
+function loadTasks(){
+    db.collection("tasks")
+    .where("uid","==",auth.currentUser.uid)
+    .onSnapshot(snapshot=>{
+        const board = document.getElementById("board");
+        board.innerHTML="";
+
+        snapshot.forEach(doc=>{
+            const task = doc.data();
+
+            const note = document.createElement("div");
+            note.className = "note " + task.subject.toLowerCase();
+
+            note.innerHTML = `
+                ${task.text}<br>
+                <small>Due: ${task.due}</small>
+            `;
+
+            board.appendChild(note);
+        });
+    });
+}
 
 
