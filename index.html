@@ -11,6 +11,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/muuri@0.9.4/dist/muuri.min.js"></script>
 
     <style>
         body {
@@ -41,7 +42,7 @@
             margin: 10px 0;
         }
 
-        input, button {
+        input, button, select {
             padding: 8px;
             border-radius: 8px;
             border: 1px solid #ccc;
@@ -68,20 +69,18 @@
         }
 
         .task-card {
-            background: #fffa87;
             padding: 15px;
             width: 150px;
             border-radius: 12px;
             box-shadow: 2px 4px 10px rgba(0,0,0,0.2);
-            position: relative;
             display: flex;
             flex-direction: column;
-            transition: transform 0.2s;
+            position: relative;
+            cursor: grab;
         }
 
         .task-card.dark {
-            background: #f4d03f;
-            color: black;
+            filter: brightness(0.9);
         }
 
         .task-card strong {
@@ -118,11 +117,27 @@
 
 <h1>Homework Planner</h1>
 
-<input id="taskInput" placeholder="Enter homework"><br>
-<input type="date" id="dueDate"><br>
+<input id="taskInput" placeholder="Enter homework">
+<input type="date" id="dueDate">
+<select id="subject">
+    <option value="Math" data-color="#fffa87">Math</option>
+    <option value="Science" data-color="#a0e7a0">Science</option>
+    <option value="English" data-color="#f9c1c1">English</option>
+    <option value="Other" data-color="#d3d3d3">Other</option>
+</select>
+<select id="priority">
+    <option value="normal">Normal</option>
+    <option value="high">High ⚠️</option>
+</select>
 <button onclick="addTask()">Add Task</button>
 
-<div id="taskContainer"></div>
+<div id="filters">
+    <button onclick="sortTasksByDue()">Sort by Due Date</button>
+    <button onclick="filterIncomplete()">Show Incomplete Only</button>
+    <button onclick="showAllTasks()">Show All</button>
+</div>
+
+<div id="taskContainer" class="grid"></div>
 
 <h2>Progress Stats</h2>
 <canvas id="progressChart" width="350" height="200"></canvas>
@@ -130,22 +145,21 @@
 <script>
 let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 let username = localStorage.getItem("username");
+let grid; // Muuri grid instance
 
-// Prompt for username if not set
 if (!username) {
     username = prompt("Enter your name:");
     localStorage.setItem("username", username);
 }
 document.getElementById("usernameDisplay").innerText = "Hi, " + username;
 
-// Ask permission for notifications
 if ('Notification' in window) {
     if (Notification.permission !== 'granted') {
         Notification.requestPermission();
     }
 }
 
-// Save tasks to localStorage
+// Save tasks
 function saveTasks() {
     localStorage.setItem("tasks", JSON.stringify(tasks));
 }
@@ -154,11 +168,17 @@ function saveTasks() {
 function addTask() {
     let text = document.getElementById("taskInput").value.trim();
     let date = document.getElementById("dueDate").value;
+    let subjectSelect = document.getElementById("subject");
+    let subject = subjectSelect.value;
+    let color = subjectSelect.options[subjectSelect.selectedIndex].dataset.color;
+    let prioritySelect = document.getElementById("priority");
+    let priority = prioritySelect.value;
 
     if (text === "") return;
 
     let dueTime = date ? new Date(date).getTime() : null;
-    let newTask = { text: text, due: date, done: false, dueTime: dueTime, notified: false };
+
+    let newTask = { text, due: date, done: false, dueTime, notified: false, subject, color, priority };
     tasks.push(newTask);
 
     document.getElementById("taskInput").value = "";
@@ -178,7 +198,7 @@ function deleteTask(index) {
     updateChart();
 }
 
-// Toggle task done
+// Toggle done
 function toggleDone(index) {
     tasks[index].done = !tasks[index].done;
     saveTasks();
@@ -186,31 +206,57 @@ function toggleDone(index) {
     updateChart();
 }
 
-// Show tasks as sticky notes
-function showTasks() {
+// Show tasks
+function showTasks(filteredTasks) {
+    const displayTasks = filteredTasks || tasks;
     const container = document.getElementById("taskContainer");
     container.innerHTML = "";
 
-    tasks.forEach((task, index) => {
+    displayTasks.forEach((task, index) => {
         const card = document.createElement("div");
         card.className = "task-card";
+        card.style.background = task.color;
         if (document.body.classList.contains("dark")) card.classList.add("dark");
 
-        // Slight random rotation for sticky note look
-        card.style.transform = `rotate(${Math.floor(Math.random()*6-3)}deg)`;
+        let priorityIcon = task.priority === "high" ? "⚠️ " : "";
 
         card.innerHTML = `
             <button class="delete-btn" onclick="deleteTask(${index})">X</button>
             <input type="checkbox" ${task.done ? "checked" : ""} onclick="toggleDone(${index})">
-            <strong>${task.text}</strong>
+            <strong>${priorityIcon}${task.text}</strong>
             <small>Due: ${task.due || "No date"}</small>
         `;
-
         container.appendChild(card);
     });
+
+    // Initialize Muuri
+    if (!grid) {
+        grid = new Muuri('.grid', { dragEnabled: true, layoutOnInit: true, dragSort: true });
+        grid.on('dragEnd', savePositions);
+    } else {
+        grid.refreshItems().layout();
+    }
+
+    // Restore saved order
+    const savedOrder = JSON.parse(localStorage.getItem('taskOrder') || '[]');
+    if (savedOrder.length) {
+        const items = grid.getItems();
+        savedOrder.forEach((oldIndex, newIndex) => {
+            if (items[oldIndex]) grid.move(items[oldIndex], newIndex);
+        });
+        grid.layout(true);
+    }
 }
 
-// Notifications on adding task
+// Save positions
+function savePositions() {
+    const order = grid.getItems().map(item => {
+        return Array.from(document.getElementById('taskContainer').children).indexOf(item.getElement());
+    });
+    localStorage.setItem('taskOrder', JSON.stringify(order));
+}
+
+// Notifications
 function notifyTask(task) {
     if (Notification.permission === 'granted') {
         new Notification("Homework Reminder!", {
@@ -220,7 +266,6 @@ function notifyTask(task) {
     }
 }
 
-// Notifications for tasks due while app is open
 function notifyDue(task) {
     if (Notification.permission === 'granted') {
         new Notification("Homework Due!", {
@@ -230,7 +275,7 @@ function notifyDue(task) {
     }
 }
 
-// Check every minute for due tasks
+// Check due tasks every minute
 setInterval(() => {
     const now = Date.now();
     tasks.forEach(task => {
@@ -243,7 +288,7 @@ setInterval(() => {
     });
 }, 60000);
 
-// Dark mode toggle
+// Dark mode
 function toggleDarkMode() {
     document.body.classList.toggle("dark");
     localStorage.setItem("darkMode", document.body.classList.contains("dark"));
@@ -252,7 +297,25 @@ if (localStorage.getItem("darkMode") === "true") {
     document.body.classList.add("dark");
 }
 
-// Chart for progress stats
+// Sorting & filtering
+function sortTasksByDue() {
+    tasks.sort((a,b) => {
+        if(!a.due) return 1;
+        if(!b.due) return -1;
+        return new Date(a.due) - new Date(b.due);
+    });
+    showTasks();
+}
+
+function filterIncomplete() {
+    showTasks(tasks.filter(t => !t.done));
+}
+
+function showAllTasks() {
+    showTasks();
+}
+
+// Progress chart
 function updateChart() {
     const completed = tasks.filter(t => t.done).length;
     const remaining = tasks.length - completed;
@@ -269,11 +332,7 @@ function updateChart() {
                 backgroundColor: ['#4e73df', '#1cc88a']
             }]
         },
-        options: {
-            plugins: {
-                legend: { position: 'bottom' }
-            }
-        }
+        options: { plugins: { legend: { position: 'bottom' } } }
     });
 }
 
